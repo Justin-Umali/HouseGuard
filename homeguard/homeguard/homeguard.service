@@ -1,0 +1,16 @@
+[Unit]
+Description=HomeGuard AI CCTV
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/homeguard
+ExecStart=/home/pi/homeguard/venv/bin/python app.py
+Restart=always
+RestartSec=5
+SupplementaryGroups=video gpio
+
+[Install]
+WantedBy=multi-user.target

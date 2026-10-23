@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Events - HomeGuard{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>Event history</h2>
+  <div class="filters">
+    <a class="chip {{ 'active' if min_level == 1 }}" href="?level=1">All ({{ (counts.get(1,0) + counts.get(2,0) + counts.get(3,0)) }})</a>
+    <a class="chip {{ 'active' if min_level == 2 }}" href="?level=2">Level 2+ ({{ counts.get(2,0) + counts.get(3,0) }})</a>
+    <a class="chip {{ 'active' if min_level == 3 }}" href="?level=3">Danger only ({{ counts.get(3,0) }})</a>
+  </div>
+  {% include "_events_list.html" %}
+</section>
+{% endblock %}

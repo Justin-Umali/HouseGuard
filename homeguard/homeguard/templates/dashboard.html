@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Live - HomeGuard{% endblock %}
+{% block content %}
+<div class="grid">
+  <section class="card video">
+    <img id="feed" src="{{ url_for('video_feed') }}" alt="Live camera feed">
+    <div id="banner" class="banner l{{ status.level }}">
+      Level {{ status.level }} &middot; {{ status.level_name }}
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2>Detection levels</h2>
+    <ol class="levels">
+      <li id="lv1" class="{{ 'on' if status.level >= 1 }}"><b>Level 1 &middot; Camera</b><span>AI sees a person</span></li>
+      <li id="lv2" class="{{ 'on' if status.level >= 2 }}"><b>Level 2 &middot; Motion</b><span>PIR sensor confirms</span></li>
+      <li id="lv3" class="{{ 'on danger' if status.level >= 3 }}"><b>Level 3 &middot; Danger</b><span>Presence persists &rarr; email sent</span></li>
+    </ol>
+
+    <h2>System</h2>
+    <ul class="kv">
+      <li>Armed <span id="s-armed">{{ 'Yes' if status.armed else 'No' }}</span></li>
+      <li>Camera <span id="s-camera">{{ 'Online' if status.camera_ok else 'Offline' }}</span></li>
+      <li>PIR sensor <span id="s-pir">{{ 'Hardware' if status.pir_hardware else 'Not found (simulation)' }}</span></li>
+      <li>Motion now <span id="s-motion">{{ 'Yes' if status.motion else 'No' }}</span></li>
+      <li>AI model <span id="s-det">{{ status.detector }}</span></li>
+      <li>Email alerts <span id="s-email">{{ 'Ready' if status.email_ready else 'Not configured' }}</span></li>
+    </ul>
+    <button class="btn secondary" id="sim" type="button">Simulate PIR motion (test)</button>
+    <p id="msg" class="muted small"></p>
+  </aside>
+</div>
+
+<section class="card">
+  <h2>Latest events <a class="small" href="{{ url_for('events') }}">view all</a></h2>
+  {% include "_events_list.html" %}
+</section>
+
+<script>
+const CSRF = "{{ csrf_token() }}";
+const NAMES = {0:"Idle",1:"Person seen",2:"Motion confirmed",3:"DANGER"};
+async function poll(){
+  try{
+    const r = await fetch("/api/status"); if(!r.ok) return;
+    const s = await r.json();
+    const b = document.getElementById("banner");
+    b.className = "banner l"+s.level;
+    b.textContent = "Level "+s.level+" · "+NAMES[s.level];
+    ["lv1","lv2","lv3"].forEach((id,i)=>{
+      const el=document.getElementById(id);
+      el.classList.toggle("on", s.level>=i+1);
+      el.classList.toggle("danger", id==="lv3" && s.level>=3);
+    });
+    document.getElementById("s-armed").textContent = s.armed?"Yes":"No";
+    document.getElementById("s-camera").textContent = s.camera_ok?"Online":"Offline";
+    document.getElementById("s-motion").textContent = s.motion?"Yes":"No";
+    document.getElementById("s-email").textContent = s.email_ready?"Ready":"Not configured";
+  }catch(e){}
+}
+setInterval(poll, 1000);
+document.getElementById("sim").addEventListener("click", async ()=>{
+  const r = await fetch("/api/simulate_motion",{method:"POST",headers:{"X-CSRF-Token":CSRF}});
+  const j = await r.json(); document.getElementById("msg").textContent = j.message;
+});
+</script>
+{% endblock %}

@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>HomeGuard</title>
+  <meta name="description" content="HomeGuard: camera preview, danger alerts and event history for your home. Sign in to view.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============ Sign in / create account ============ -->
+  <main id="view-auth" class="auth" hidden>
+    <div class="auth-intro">
+      <p class="wordmark">HomeGuard</p>
+      <h1>Know what's happening at home.</h1>
+      <p class="lead">See your camera, get told when someone is there, and look back at what happened.</p>
+    </div>
+
+    <div class="auth-panel">
+      <div class="seg" role="group" aria-label="Sign in or create account">
+        <button type="button" id="seg-signin" aria-pressed="true">Sign in</button>
+        <button type="button" id="seg-signup" aria-pressed="false">Create account</button>
+      </div>
+
+      <form id="form-signin" class="form" novalidate>
+        <label>Email
+          <input id="si-email" type="email" autocomplete="username" required>
+        </label>
+        <label>Password
+          <input id="si-pass" type="password" autocomplete="current-password" required>
+        </label>
+        <button class="btn primary" type="submit">Sign in</button>
+        <button class="btn quiet" type="button" id="btn-forgot">Forgot your password?</button>
+      </form>
+
+      <form id="form-signup" class="form" novalidate hidden>
+        <label>Your name
+          <input id="su-name" type="text" autocomplete="name" required>
+        </label>
+        <label>Email
+          <input id="su-email" type="email" autocomplete="username" required>
+        </label>
+        <label>Password <span class="hint">at least 8 characters</span>
+          <input id="su-pass" type="password" autocomplete="new-password" minlength="8" required>
+        </label>
+        <button class="btn primary" type="submit">Create account</button>
+        <p class="note">The home owner has to approve new accounts before they can see the camera.</p>
+      </form>
+
+      <p id="auth-msg" class="msg" role="alert"></p>
+    </div>
+  </main>
+
+  <!-- ============ Waiting for approval ============ -->
+  <main id="view-gate" class="gate" hidden>
+    <p class="wordmark">HomeGuard</p>
+    <h1 id="gate-title">Waiting for approval</h1>
+    <p id="gate-text" class="lead"></p>
+    <p id="gate-email" class="muted"></p>
+    <div class="row">
+      <button class="btn primary" type="button" id="btn-verify">Send verification email</button>
+      <button class="btn" type="button" id="btn-recheck">Check again</button>
+      <button class="btn quiet" type="button" id="btn-gate-out">Sign out</button>
+    </div>
+    <p id="gate-msg" class="msg" role="status"></p>
+  </main>
+
+  <!-- ============ App ============ -->
+  <div id="view-app" hidden>
+    <header class="topbar">
+      <div class="shell topbar-in">
+        <span class="wordmark">HomeGuard</span>
+        <nav class="tabs" aria-label="Sections">
+          <a href="#live" data-tab="live">Live</a>
+          <a href="#events" data-tab="events">Events</a>
+          <a href="#people" data-tab="people" id="nav-people" hidden>People<span id="badge-people" class="badge" hidden></span></a>
+          <a href="#account" data-tab="account">Account</a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Live -->
+    <section data-view="live" hidden>
+      <div class="band" id="band" data-state="none" aria-live="polite">
+        <div class="shell">
+          <h1 id="band-title">Waiting for your Raspberry Pi</h1>
+          <p id="band-sub"></p>
+        </div>
+      </div>
+
+      <div class="shell">
+        <div class="live-grid">
+          <section aria-labelledby="h-camera">
+            <h2 id="h-camera" class="sr-only">Camera preview</h2>
+            <div class="viewport" id="viewport">
+              <img id="preview-img" alt="Latest picture from the camera" hidden>
+              <div id="preview-empty" class="viewport-empty">
+                <p>Camera preview is off.</p>
+                <p class="muted">Pictures refresh about every 2 seconds while you watch. This keeps the free Firebase plan from running out.</p>
+              </div>
+            </div>
+            <div class="viewport-bar">
+              <button id="btn-preview" class="btn primary" type="button">Start preview</button>
+              <span id="preview-hint" class="muted" aria-live="polite"></span>
+              <a id="link-local" class="spacer-left" href="#" target="_blank" rel="noopener" hidden>Open full video at home</a>
+            </div>
+          </section>
+
+          <aside class="side" aria-label="Summary">
+            <h2>Today</h2>
+            <dl class="counts">
+              <div><dt>Person seen</dt><dd id="cnt-1">0</dd></div>
+              <div><dt>Motion confirmed</dt><dd id="cnt-2">0</dd></div>
+              <div><dt>Danger</dt><dd id="cnt-3">0</dd></div>
+            </dl>
+
+            <h2>System</h2>
+            <dl class="facts">
+              <div><dt>Detection</dt><dd id="f-armed">-</dd></div>
+              <div><dt>Camera</dt><dd id="f-camera">-</dd></div>
+              <div><dt>AI model</dt><dd id="f-detector">-</dd></div>
+              <div><dt>Last report</dt><dd id="f-updated">-</dd></div>
+            </dl>
+
+            <div id="arm-box" hidden>
+              <button id="btn-arm" class="switch" type="button" role="switch" aria-checked="true">
+                <span class="track"><span class="knob"></span></span>
+                <span id="arm-label">Detection is on</span>
+              </button>
+              <p class="note">Only the owner can turn detection on or off.</p>
+            </div>
+          </aside>
+        </div>
+
+        <section class="block">
+          <div class="block-head">
+            <h2>Latest events</h2>
+            <a href="#events">See all events</a>
+          </div>
+          <ul id="recent" class="events"></ul>
+        </section>
+      </div>
+    </section>
+
+    <!-- Events -->
+    <section data-view="events" hidden>
+      <div class="shell page">
+        <h1>Events</h1>
+        <div class="filters">
+          <label class="grow">Search
+            <input id="search" type="search" placeholder="Try: danger, person, or a date">
+          </label>
+          <div>
+            <span class="label">Show</span>
+            <div class="seg" role="group" aria-label="Level filter">
+              <button type="button" data-min="1" aria-pressed="true">All</button>
+              <button type="button" data-min="2" aria-pressed="false">Confirmed</button>
+              <button type="button" data-min="3" aria-pressed="false">Danger</button>
+            </div>
+          </div>
+          <label>When
+            <select id="range">
+              <option value="all">All loaded</option>
+              <option value="today">Today</option>
+              <option value="week">Last 7 days</option>
+            </select>
+          </label>
+        </div>
+        <p id="count" class="muted"></p>
+        <ul id="events" class="events"></ul>
+        <div id="owner-tools" class="owner-tools" hidden>
+          <button id="btn-clear" class="btn danger-text" type="button">Delete all loaded events</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- People -->
+    <section data-view="people" hidden>
+      <div class="shell page">
+        <h1>People</h1>
+        <p class="lead">Approve the accounts that may see your camera and events.</p>
+
+        <h2>Waiting for approval</h2>
+        <ul id="people-pending" class="people"></ul>
+
+        <h2>Has access</h2>
+        <ul id="people-members" class="people"></ul>
+
+        <h2>Removed</h2>
+        <ul id="people-blocked" class="people"></ul>
+      </div>
+    </section>
+
+    <!-- Account -->
+    <section data-view="account" hidden>
+      <div class="shell page narrow">
+        <h1>Account</h1>
+        <dl class="facts wide">
+          <div><dt>Name</dt><dd id="ac-name">-</dd></div>
+          <div><dt>Email</dt><dd id="ac-email">-</dd></div>
+          <div><dt>Role</dt><dd id="ac-role">-</dd></div>
+          <div><dt>Email verified</dt><dd id="ac-verified">-</dd></div>
+        </dl>
+
+        <form id="form-name" class="form inline-form">
+          <label class="grow">Change your name
+            <input id="ac-name-input" type="text" autocomplete="name" required>
+          </label>
+          <button class="btn" type="submit">Save name</button>
+        </form>
+
+        <div class="stack">
+          <button id="btn-reset" class="btn" type="button">Email me a password reset link</button>
+        </div>
+
+        <h2>Alerts in this browser</h2>
+        <p class="muted">Get a notification when danger is detected. Keep this page open in a tab.</p>
+        <div class="stack">
+          <button id="btn-notify" class="btn" type="button" aria-pressed="false">Turn on danger notifications</button>
+        </div>
+
+        <h2>Full video at home</h2>
+        <p class="muted">Paste your Raspberry Pi's address (for example http://192.168.1.25:5000). It only works on your home Wi-Fi. This is saved in this browser only.</p>
+        <form id="form-local" class="form inline-form">
+          <label class="grow">Pi address
+            <input id="local-url" type="url" placeholder="http://192.168.1.25:5000">
+          </label>
+          <button class="btn" type="submit">Save</button>
+        </form>
+
+        <div class="stack">
+          <button id="btn-signout" class="btn danger-text" type="button">Sign out</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <dialog id="lightbox" aria-label="Event snapshot">
+    <img id="lightbox-img" alt="Snapshot from the event">
+    <form method="dialog"><button class="btn">Close</button></form>
+  </dialog>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

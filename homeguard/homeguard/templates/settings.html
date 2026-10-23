@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Settings - HomeGuard{% endblock %}
+{% block content %}
+<section class="card narrow wide">
+  <h2>Settings</h2>
+  <form method="post" class="form">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+
+    <label class="check"><input type="checkbox" name="armed" {{ 'checked' if s.armed }}> System armed</label>
+    <label class="check"><input type="checkbox" name="require_pir" {{ 'checked' if s.require_pir }}>
+      Require PIR sensor to confirm (recommended)</label>
+
+    <label>Alert email address(es) <small>comma separated</small>
+      <input type="text" name="recipients" value="{{ s.recipients }}" placeholder="you@example.com, family@example.com">
+    </label>
+    {% if not smtp_ok %}
+      <p class="flash error">Sender account not configured. Set SMTP_USER and SMTP_PASS in <code>.env</code> and restart.</p>
+    {% endif %}
+
+    <div class="two">
+      <label>Confirm window (s) <small>camera &amp; PIR must agree within</small>
+        <input type="number" name="confirm_window" min="2" max="60" value="{{ s.confirm_window }}"></label>
+      <label>Danger after (s) <small>confirmed presence duration</small>
+        <input type="number" name="danger_seconds" min="1" max="60" value="{{ s.danger_seconds }}"></label>
+      <label>Email cooldown (s)
+        <input type="number" name="cooldown" min="10" max="3600" value="{{ s.cooldown }}"></label>
+      <label>Detection interval (s) <small>higher = cooler Pi</small>
+        <input type="number" step="0.1" name="detect_interval" min="0.2" max="5" value="{{ s.detect_interval }}"></label>
+      <label>SSD confidence
+        <input type="number" step="0.05" name="ssd_confidence" min="0.2" max="0.95" value="{{ s.ssd_confidence }}"></label>
+      <label>HOG threshold <small>fallback model</small>
+        <input type="number" step="0.1" name="hog_threshold" min="0.1" max="3" value="{{ s.hog_threshold }}"></label>
+    </div>
+
+    <div class="row">
+      <button class="btn" type="submit">Save</button>
+      <button class="btn secondary" type="button" id="testmail">Send test email</button>
+    </div>
+    <p id="msg" class="muted small"></p>
+  </form>
+</section>
+<script>
+document.getElementById("testmail").addEventListener("click", async ()=>{
+  const m = document.getElementById("msg"); m.textContent = "Sending...";
+  const r = await fetch("/api/test_email",{method:"POST",headers:{"X-CSRF-Token":"{{ csrf_token() }}"}});
+  const j = await r.json(); m.textContent = j.ok ? "Test email sent." : "Failed: "+j.message;
+});
+</script>
+{% endblock %}

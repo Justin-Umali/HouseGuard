@@ -1,0 +1,24 @@
+{% if events %}
+<ul class="events">
+  {% for e in events %}
+  <li class="ev l{{ e.level }}">
+    {% if e.snapshot %}
+      <a href="{{ url_for('snapshot', name=e.snapshot) }}" target="_blank" rel="noopener">
+        <img src="{{ url_for('snapshot', name=e.snapshot) }}" alt="snapshot" loading="lazy">
+      </a>
+    {% else %}<div class="noimg"></div>{% endif %}
+    <div>
+      <div><span class="pill l{{ e.level }}">L{{ e.level }} {{ LEVEL_NAMES[e.level] }}</span>
+        {% if e.level == 3 %}
+          <span class="pill mail">{{ 'Email sent' if e.emailed == 1 else 'Email failed' if e.emailed == -1 else 'Sending...' }}</span>
+        {% endif %}
+      </div>
+      <div>{{ e.message }}</div>
+      <div class="muted small">{{ e.ts | dt }}</div>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="muted">No events yet. All quiet.</p>
+{% endif %}

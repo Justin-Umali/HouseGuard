@@ -1,0 +1,7 @@
+flask>=3.0
+gunicorn>=21.2
+numpy
+opencv-python-headless
+gpiozero
+lgpio
+firebase-admin

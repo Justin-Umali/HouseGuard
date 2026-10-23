@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===== EDIT THIS: the home owner's email. Use the same email you sign up with on the website.
+    // The owner must have verified that email address (the website offers a button for it).
+    function ownerEmails() { return ['owner@example.com']; }
+
+    function signedIn() { return request.auth != null; }
+
+    function isOwner() {
+      return signedIn()
+          && request.auth.token.email_verified == true
+          && request.auth.token.email in ownerEmails();
+    }
+
+    function profilePath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+
+    // A member is anyone the owner has approved (role == 'member').
+    function isMember() {
+      return signedIn() && exists(profilePath()) && get(profilePath()).data.role == 'member';
+    }
+
+    function approved() { return isOwner() || isMember(); }
+
+    // ----- Accounts -----
+    match /users/{uid} {
+      // You can read your own profile; the owner can read everyone's.
+      allow get: if signedIn() && (request.auth.uid == uid || isOwner());
+      allow list: if isOwner();
+
+      // Signing up creates your own profile, always as 'pending'.
+      allow create: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.keys().hasOnly(['email', 'name', 'role', 'createdAt'])
+                    && request.resource.data.role == 'pending'
+                    && request.resource.data.email == request.auth.token.email
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() <= 80;
+
+      // You may change only your own display name. Only the owner can change roles.
+      allow update: if isOwner()
+                    || (signedIn() && request.auth.uid == uid
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
+                        && request.resource.data.name is string
+                        && request.resource.data.name.size() <= 80);
+      allow delete: if isOwner();
+    }
+
+    // ----- Data written by the Raspberry Pi (Admin key bypasses these rules) -----
+    match /events/{id} {
+      allow read: if approved();
+      allow delete: if isOwner();
+      allow create, update: if false;
+    }
+    match /status/{id} {
+      allow read: if approved();
+      allow write: if false;
+    }
+    match /preview/{id} {
+      allow read: if approved();
+      allow write: if false;
+    }
+
+    // ----- Commands from the website to the Pi -----
+    // Any approved person may ask the Pi to send camera pictures.
+    match /control/preview {
+      allow read: if approved();
+      allow create, update: if approved()
+                            && request.resource.data.keys().hasOnly(['ts', 'by'])
+                            && request.resource.data.ts is number;
+      allow delete: if false;
+    }
+    // Only the owner may turn detection on or off.
+    match /control/system {
+      allow read: if approved();
+      allow create, update: if isOwner()
+                            && request.resource.data.keys().hasOnly(['armed', 'by', 'ts'])
+                            && request.resource.data.armed is bool;
+      allow delete: if false;
+    }
+  }
+}
